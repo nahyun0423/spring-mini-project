@@ -8,7 +8,7 @@ public enum PmLevel {
     BAD,
     VERY_BAD;
 
-    public boolean isWorseOrEqual(PmLevel other) {
-        return this.ordinal() >= other.ordinal();
+    public boolean isBadOrWorse() {
+        return this.ordinal() >= BAD.ordinal();
     }
 }

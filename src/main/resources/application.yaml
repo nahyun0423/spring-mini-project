@@ -1,17 +1,37 @@
 spring:
   application:
     name: kindergarten
+
   datasource:
     url: jdbc:mysql://localhost:3306/kinder_mysql
     username: root
     password: nahyun
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+
   jpa:
     hibernate:
-      ddl-auto: update   # 개발용
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: Asia/Seoul
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQLDialect
+    defer-datasource-initialization: true
+
+
+external:
+  open-meteo:
+    forecast-url: https://api.open-meteo.com/v1/forecast
+    archive-url: https://archive-api.open-meteo.com/v1/archive
+    air-url: https://air-quality-api.open-meteo.com/v1/air-quality
+    timezone: Asia/Seoul
+    latitude: 37.5665
+    longitude: 126.9780
+

@@ -1,25 +1,20 @@
 package com.example.kindergarten.domain.task;
 
 import jakarta.persistence.*;
-import lombok.Getter;
+import lombok.*;
 
 @Getter
 @Entity
 @Table(name = "task_template")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TaskTemplate {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 어떤 조건에 해당하는 템플릿인지 (예: "PM_BAD", "FLU_WARNING")
-    @Column(nullable = false)
     private String conditionTag;
 
-    @Column(nullable = false)
     private String title;
-
-    @Column(length = 1000)
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -27,22 +22,11 @@ public class TaskTemplate {
 
     private boolean active = true;
 
-    protected TaskTemplate() {
-    }
-
-    public TaskTemplate(String conditionTag,
-                        String title,
-                        String description,
-                        TaskCategory category) {
+    public TaskTemplate(String conditionTag, String title, String description, TaskCategory category, boolean active) {
         this.conditionTag = conditionTag;
         this.title = title;
         this.description = description;
         this.category = category;
-        this.active = true;
-    }
-
-    public boolean isActive() {
-        return active;
+        this.active = active;
     }
 }
-
