@@ -3,15 +3,30 @@ name: spring-mini-project CI
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "src/**"
+      - "pom.xml"
+      - "mvnw"
+      - ".mvn/**"
+      - "kindergarten-frontend/**"
+      - ".github/workflows/**"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "src/**"
+      - "pom.xml"
+      - "mvnw"
+      - ".mvn/**"
+      - "kindergarten-frontend/**"
+      - ".github/workflows/**"
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-test:
+  backend:
+    name: Backend (Java 17 / Maven)
     runs-on: ubuntu-latest
 
     steps:
@@ -28,21 +43,49 @@ jobs:
       - name: Grant execute permission for mvnw
         run: chmod +x mvnw
 
-      # 테스트 (단위테스트)
-      - name: Test with Maven
+      - name: Test (Maven)
         run: ./mvnw -B test
 
-      # 패키징 (jar 생성)
-      - name: Package with Maven
+      - name: Package (skip tests)
         run: ./mvnw -B -DskipTests package
 
-      # 빌드 산출물(JAR) 다운로드 가능하게 업로드
-      - name: Upload JAR artifact
+      - name: Upload backend JAR
         uses: actions/upload-artifact@v4
         with:
-          name: app-jar
+          name: backend-jar
           path: |
             target/*.jar
             !target/*-sources.jar
             !target/*-javadoc.jar
             !target/*original*.jar
+
+  frontend:
+    name: Frontend (Node / Build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: kindergarten-frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: kindergarten-frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: kindergarten-frontend/dist
