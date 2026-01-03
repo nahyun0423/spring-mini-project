@@ -44,7 +44,14 @@ jobs:
         run: chmod +x mvnw
 
       - name: Test (Maven)
-        run: ./mvnw -B test
+        run: ./mvnw -B -e test
+
+      - name: Upload surefire reports (when tests fail)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports
 
       - name: Package (skip tests)
         run: ./mvnw -B -DskipTests package
