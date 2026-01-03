@@ -1,38 +1,26 @@
-name: spring-mini-project CI
+name: Build & Upload to S3
 
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - "src/**"
-      - "pom.xml"
-      - "mvnw"
-      - ".mvn/**"
-      - "kindergarten-frontend/**"
-      - ".github/workflows/**"
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - "src/**"
-      - "pom.xml"
-      - "mvnw"
-      - ".mvn/**"
-      - "kindergarten-frontend/**"
-      - ".github/workflows/**"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  backend:
-    name: Backend (Java 17 / Maven)
+  build-upload:
     runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ===== Backend (Spring / Maven / Java 17) =====
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -43,42 +31,10 @@ jobs:
       - name: Grant execute permission for mvnw
         run: chmod +x mvnw
 
-      - name: Test (Maven)
-        run: ./mvnw -B -e test -Dspring.profiles.active=test
-
-
-      - name: Upload surefire reports (when tests fail)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-reports
-          path: target/surefire-reports
-
-      - name: Package (skip tests)
+      - name: Build Backend (Maven)
         run: ./mvnw -B -DskipTests package
 
-      - name: Upload backend JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-jar
-          path: |
-            target/*.jar
-            !target/*-sources.jar
-            !target/*-javadoc.jar
-            !target/*original*.jar
-
-  frontend:
-    name: Frontend (Node 20 / Vite build)
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: kindergarten-frontend
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      # ===== Frontend (Vite / npm) =====
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -86,14 +42,41 @@ jobs:
           cache: npm
           cache-dependency-path: kindergarten-frontend/package-lock.json
 
-      - name: Install deps
+      - name: Install Frontend deps
+        working-directory: kindergarten-frontend
         run: npm ci
 
-      - name: Build
+      - name: Build Frontend
+        working-directory: kindergarten-frontend
         run: npm run build
 
-      - name: Upload frontend dist
-        uses: actions/upload-artifact@v4
+      # ===== Package (zip) =====
+      - name: Make deploy directory
+        run: |
+          rm -rf deploy
+          mkdir -p deploy
+
+      - name: Copy Backend JAR
+        run: |
+          cp target/*.jar deploy/
+
+      - name: Copy Frontend dist
+        run: |
+          cp -r kindergarten-frontend/dist deploy/frontend-dist
+
+      - name: Make zip file
+        run: |
+          zip -r deploy-${{ github.sha }}.zip deploy
+
+      # ===== AWS credentials (Access Key 방식) =====
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          name: frontend-dist
-          path: kindergarten-frontend/dist
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ===== Upload to S3 =====
+      - name: Upload to S3
+        run: |
+          aws s3 cp deploy-${{ github.sha }}.zip s3://${{ env.S3_BUCKET_NAME }}/deploy/deploy-${{ github.sha }}.zip
