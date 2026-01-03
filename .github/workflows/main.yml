@@ -44,7 +44,8 @@ jobs:
         run: chmod +x mvnw
 
       - name: Test (Maven)
-        run: ./mvnw -B -e test
+        run: ./mvnw -B -e test -Dspring.profiles.active=test
+
 
       - name: Upload surefire reports (when tests fail)
         if: failure()
