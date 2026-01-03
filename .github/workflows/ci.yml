@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend CI (Java 17 / Maven)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Grant execute permission for mvnw
+        run: chmod +x mvnw
+
+      # ✅ CI에서 MySQL 안 붙게 test 프로필 강제
+      - name: Test (Maven)
+        run: ./mvnw -B -e test -Dspring.profiles.active=test
+
+      - name: Package (skip tests)
+        run: ./mvnw -B -DskipTests package
+
+      - name: Upload backend JAR (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: |
+            target/*.jar
+            !target/*-sources.jar
+            !target/*-javadoc.jar
+            !target/*original*.jar
+
+  frontend:
+    name: Frontend CI (Node 20 / Vite)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: kindergarten-frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: kindergarten-frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload frontend dist (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: kindergarten-frontend/dist
